@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>肯佳企業 - Brinno TLC 縮時相機模擬器</title>
+    <title>肯佳企業 - Brinno 縮時相機視角模擬器</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -49,9 +49,9 @@
 
     <!-- React 應用程式主邏輯 -->
     <script type="text/babel" data-type="module">
-        import React, { useState, useMemo } from 'react';
+        import React, { useState, useMemo, useEffect } from 'react';
         import { createRoot } from 'react-dom/client';
-        import { Ruler, Info, Camera, Aperture, User, Building2, Settings, CheckCircle2, ArrowUpDown, Eye, ScanEye } from 'lucide-react';
+        import { Ruler, Info, Camera, Aperture, User, Building2, Settings, CheckCircle2, ArrowUpDown, Eye, ScanEye, ZoomIn } from 'lucide-react';
 
         const App = () => {
             // 狀態管理
@@ -64,54 +64,90 @@
             const [objHeight, setObjHeight] = useState(3000); // 30m
             const [cameraHeight, setCameraHeight] = useState(2000); // 20m
             const [tilt, setTilt] = useState(0); // 俯仰角度
+            const [zoomLevel, setZoomLevel] = useState(0); // 變焦程度 0 (Wide) ~ 1 (Tele)
             
             // 各型號相機規格參數
             const models = {
                 'TLC300': {
-                name: 'TLC300',
-                label: 'TLC300 入門款',
-                fov: 118, // 對角線
-                hFov: 95, // 水平
-                vFov: 60, // 垂直 (估算)
-                resolution: '1080p FHD',
-                sensor: 'HDR Sensor',
-                color: 'bg-blue-600',
-                iconColor: '#2563eb',
-                desc: '適合長期記錄、輕便好攜帶。',
-                screenSize: '1.44" IPS'
+                    name: 'TLC300',
+                    label: 'TLC300 入門款',
+                    fov: 118, // 對角線
+                    hFov: 95, // 水平
+                    vFov: 60, // 垂直 (估算)
+                    resolution: '1080p FHD',
+                    sensor: 'HDR Sensor',
+                    color: 'bg-blue-600',
+                    iconColor: '#2563eb',
+                    desc: '適合長期記錄、輕便好攜帶。',
+                    screenSize: '1.44" IPS'
                 },
                 'TLC2020': {
-                name: 'TLC2020',
-                label: 'TLC2020 進階款',
-                fov: 118, 
-                hFov: 95,
-                vFov: 60,
-                resolution: '1080p FHD',
-                sensor: 'HDR & FHD Sensor',
-                color: 'bg-yellow-500',
-                iconColor: '#eab308',
-                desc: '可換鏡頭設計，功能更強大。',
-                screenSize: '2.0" TFT'
+                    name: 'TLC2020',
+                    label: 'TLC2020 標準版',
+                    fov: 118, 
+                    hFov: 95,
+                    vFov: 60,
+                    resolution: '1080p FHD',
+                    sensor: 'HDR & FHD Sensor',
+                    color: 'bg-yellow-500',
+                    iconColor: '#eab308',
+                    desc: '標準廣角鏡頭 (BCS039)，視野寬廣。',
+                    screenSize: '2.0" TFT'
+                },
+                'TLC2020_18_55': {
+                    name: 'TLC2020 + BCS 18-55',
+                    label: 'TLC2020 + BCS 18-55mm',
+                    fov: '113°~48°', // 變焦範圍
+                    zoomRange: { min: 113, max: 48 }, // 對角線範圍
+                    hFovRange: { min: 90, max: 38 }, // 水平範圍 (估算)
+                    vFovRange: { min: 58, max: 22 }, // 垂直範圍 (估算)
+                    resolution: '1080p FHD',
+                    sensor: 'F1.2 大光圈',
+                    color: 'bg-orange-500',
+                    iconColor: '#f97316',
+                    desc: '手動變焦鏡 (18-55mm)，可調整視角遠近，需搭配電池蓋轉接座。',
+                    screenSize: '2.0" TFT'
                 },
                 'BCC5000': {
-                name: 'BCC5000',
-                label: 'BCC5000 4K 旗艦',
-                fov: 120,
-                hFov: 105,
-                vFov: 68,
-                resolution: '4K UHD',
-                sensor: 'Sony STARVIS 2',
-                color: 'bg-purple-600',
-                iconColor: '#9333ea',
-                desc: '4K 超高畫質，夜拍強悍，適合大型工程。',
-                screenSize: 'App Control'
+                    name: 'BCC5000',
+                    label: 'BCC5000 4K 旗艦',
+                    fov: 118,
+                    hFov: 95,
+                    vFov: 60,
+                    resolution: '4K UHD',
+                    sensor: 'Sony STARVIS 2',
+                    color: 'bg-purple-600',
+                    iconColor: '#9333ea',
+                    desc: '4K 超高畫質，夜拍強悍，適合大型工程。',
+                    screenSize: 'App Control'
                 }
             };
 
             const currentModel = models[cameraModel];
-            const horizontalFOV = currentModel.hFov;
-            const verticalFOV = currentModel.vFov;
+            
+            // 計算當前的 FOV (如果有變焦功能)
+            const currentHFov = useMemo(() => {
+                if (currentModel.hFovRange) {
+                    // 線性插值計算當前變焦下的水平視角
+                    // zoomLevel 0 = Wide (Max Angle), 1 = Tele (Min Angle)
+                    return currentModel.hFovRange.min - (zoomLevel * (currentModel.hFovRange.min - currentModel.hFovRange.max));
+                }
+                return currentModel.hFov;
+            }, [currentModel, zoomLevel]);
+
+            const currentVFov = useMemo(() => {
+                if (currentModel.vFovRange) {
+                    return currentModel.vFovRange.min - (zoomLevel * (currentModel.vFovRange.min - currentModel.vFovRange.max));
+                }
+                return currentModel.vFov;
+            }, [currentModel, zoomLevel]);
+
             const sensorFormatRatio = 16 / 9;
+
+            // 切換相機時重置 Zoom
+            useEffect(() => {
+                setZoomLevel(0);
+            }, [cameraModel]);
 
             // 場景配置設定
             const config = {
@@ -160,9 +196,9 @@
             
             // 1. 計算視野寬度 (僅與距離有關，俯視圖用)
             const visibleWidthAtDistance = useMemo(() => {
-                const angleRad = (horizontalFOV / 2) * (Math.PI / 180);
+                const angleRad = (currentHFov / 2) * (Math.PI / 180);
                 return 2 * (distance * Math.tan(angleRad));
-            }, [distance, horizontalFOV]);
+            }, [distance, currentHFov]);
 
             // 2. 計算物體在畫面中的垂直位置與大小 (側視圖與透視用)
             const projection = useMemo(() => {
@@ -173,8 +209,8 @@
                 const angleToHead = Math.atan(relHeadY / distance) * (180 / Math.PI);
                 const angleToFeet = Math.atan(relFeetY / distance) * (180 / Math.PI);
                 
-                const screenTopAngle = tilt + (verticalFOV / 2);
-                const totalAngleRange = verticalFOV;
+                const screenTopAngle = tilt + (currentVFov / 2);
+                const totalAngleRange = currentVFov;
                 
                 // 將角度轉換為畫面百分比
                 const headPosPercent = ((screenTopAngle - angleToHead) / totalAngleRange) * 100;
@@ -189,7 +225,7 @@
                 height: feetPosPercent - headPosPercent,
                 horizon: horizonPercent
                 };
-            }, [distance, objHeight, cameraHeight, tilt, verticalFOV]);
+            }, [distance, objHeight, cameraHeight, tilt, currentVFov]);
 
             const formatLength = (val) => {
                 if (Math.abs(val) >= 100) return `${(val / 100).toFixed(1)}m`;
@@ -209,18 +245,35 @@
                 <header className="w-full max-w-6xl mb-6 border-b border-neutral-700 pb-6">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                         <div className="flex items-center gap-3">
-                        <div className={`${currentModel.color} p-2 rounded text-white shadow-lg transition-colors duration-300`}>
-                            <Camera size={28} />
+                        
+                        {/* Logo Area */}
+                        <div className="flex-shrink-0">
+                             <svg viewBox="0 0 100 100" className="h-12 w-12 rounded-lg shadow-lg" aria-label="Brinno Logo">
+                                <rect width="100" height="100" rx="12" fill="#F58020" />
+                                <g transform="translate(50, 50)">
+                                    {/* Simulated Brinno Text */}
+                                    <text x="0" y="5" textAnchor="middle" fill="white" style={{fontFamily: 'Arial, sans-serif', fontWeight: 'bold', fontSize: '24px', letterSpacing: '-1px'}}>brinno</text>
+                                    {/* Slogan */}
+                                    <text x="0" y="28" textAnchor="middle" fill="white" style={{fontFamily: 'Arial, sans-serif', fontStyle: 'italic', fontSize: '8px'}}>brilliant innovation</text>
+                                </g>
+                            </svg>
                         </div>
+
                         <div>
-                            <h1 className="text-2xl font-bold tracking-wider flex items-center gap-2">
+                            <h1 className="text-2xl font-bold tracking-wider flex flex-wrap items-center gap-2">
                                 <span className="text-white">肯佳企業</span>
                                 <span className="text-neutral-600 mx-1">|</span>
-                                Brinno <span className={`${currentModel.color.replace('bg-', 'text-')} transition-colors duration-300`}>{currentModel.name}</span>
+                                <span className={`${currentModel.color.replace('bg-', 'text-')} transition-colors duration-300`}>{currentModel.name}</span>
                             </h1>
-                            <div className="flex gap-2 text-xs text-neutral-400">
-                                <span className="bg-neutral-800 px-1.5 py-0.5 rounded border border-neutral-700">FOV {currentModel.fov}°</span>
-                                <span className="bg-neutral-800 px-1.5 py-0.5 rounded border border-neutral-700">V-Angle {verticalFOV}°</span>
+                            <div className="flex gap-2 text-xs text-neutral-400 mt-1">
+                                <span className="bg-neutral-800 px-1.5 py-0.5 rounded border border-neutral-700">
+                                    FOV {currentModel.hFovRange ? `${currentModel.fov}` : `${currentModel.fov}°`}
+                                </span>
+                                {currentModel.hFovRange && (
+                                     <span className="bg-neutral-800 px-1.5 py-0.5 rounded border border-neutral-700 text-yellow-500">
+                                        目前: {Math.round(currentHFov / 0.8)}°(對角)
+                                     </span>
+                                )}
                             </div>
                         </div>
                         </div>
@@ -237,12 +290,18 @@
                                         : 'text-neutral-400 hover:text-white hover:bg-neutral-700'
                                     }`}
                                 >
-                                    {m}
+                                    {m === 'TLC2020_18_55' ? 'BCS 18-55mm' : models[m].name}
                                     {cameraModel === m && <CheckCircle2 size={14} />}
                                 </button>
                             ))}
                         </div>
                     </div>
+                    {currentModel.desc && (
+                        <div className="mt-2 text-xs text-neutral-400 flex items-center gap-2">
+                            <Info size={14} />
+                            {currentModel.desc}
+                        </div>
+                    )}
                 </header>
 
                 <main className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -278,16 +337,20 @@
                             <div className="absolute inset-0 opacity-20" style={{backgroundImage: 'radial-gradient(#555 1px, transparent 1px)', backgroundSize: '20px 20px'}}></div>
 
                             <svg className="w-full h-full" viewBox="0 0 550 300" preserveAspectRatio="xMidYMid meet">
+                                <defs>
+                                    <linearGradient id="fovTopGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                        <stop offset="0%" stopColor={currentModel.iconColor} stopOpacity="0.3" />
+                                        <stop offset="100%" stopColor={currentModel.iconColor} stopOpacity="0" />
+                                    </linearGradient>
+                                    <linearGradient id="fovSideGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                        <stop offset="0%" stopColor={currentModel.iconColor} stopOpacity="0.3" />
+                                        <stop offset="100%" stopColor={currentModel.iconColor} stopOpacity="0" />
+                                    </linearGradient>
+                                </defs>
                             
                             {viewMode === 'top' ? (
                                 // --- 俯視圖 (Top View) ---
                                 <g>
-                                    <defs>
-                                        <linearGradient id="fovTopGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                            <stop offset="0%" stopColor={currentModel.iconColor} stopOpacity="0.3" />
-                                            <stop offset="100%" stopColor={currentModel.iconColor} stopOpacity="0" />
-                                        </linearGradient>
-                                    </defs>
                                     {/* 相機 */}
                                     <g transform="translate(30, 150)">
                                         <rect x="-10" y="-15" width="20" height="30" rx="2" fill="#333" stroke={currentModel.iconColor} strokeWidth="2" />
@@ -295,7 +358,7 @@
                                     </g>
                                     {/* FOV 錐狀 */}
                                     {(() => {
-                                        const spread = horizontalFOV * 1.2;
+                                        const spread = currentHFov * 1.2;
                                         return (
                                             <g transform="translate(40, 150)">
                                                 <path d={`M 0 0 L 480 ${-spread} L 480 ${spread} Z`} fill="url(#fovTopGradient)" opacity="0.2" />
@@ -315,13 +378,6 @@
                             ) : (
                                 // --- 側視圖 (Side View) ---
                                 <g>
-                                    <defs>
-                                        <linearGradient id="fovSideGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                            <stop offset="0%" stopColor={currentModel.iconColor} stopOpacity="0.3" />
-                                            <stop offset="100%" stopColor={currentModel.iconColor} stopOpacity="0" />
-                                        </linearGradient>
-                                    </defs>
-                                    
                                     {/* 地面線 */}
                                     <line x1="0" y1="250" x2="550" y2="250" stroke="#666" strokeWidth="2" />
                                     
@@ -336,12 +392,16 @@
                                                 {/* 相機本體 (可旋轉) */}
                                                 <g transform={`rotate(${-tilt})`}> 
                                                     <rect x="-10" y="-10" width="20" height="20" fill="#333" stroke={currentModel.iconColor} strokeWidth="2" />
+                                                    {currentModel.zoomRange && (
+                                                        // 變焦鏡頭顯示較長
+                                                        <rect x="10" y="-6" width={15 + zoomLevel * 10} height="12" fill="#555" stroke="#888" strokeWidth="1" />
+                                                    )}
                                                     <line x1="10" y1="0" x2="15" y2="0" stroke="#888" strokeWidth="2" />
                                                     
                                                     {/* FOV 錐狀 (垂直) */}
-                                                    <path d={`M 15 0 L 450 ${-verticalFOV*2} L 450 ${verticalFOV*2} Z`} fill="url(#fovSideGradient)" opacity="0.2" />
-                                                    <line x1="15" y1="0" x2="450" y2={-verticalFOV*2} stroke={currentModel.iconColor} strokeWidth="1" strokeDasharray="3,3" opacity="0.3"/>
-                                                    <line x1="15" y1="0" x2="450" y2={verticalFOV*2} stroke={currentModel.iconColor} strokeWidth="1" strokeDasharray="3,3" opacity="0.3"/>
+                                                    <path d={`M 15 0 L 450 ${-currentVFov*2} L 450 ${currentVFov*2} Z`} fill="url(#fovSideGradient)" opacity="0.2" />
+                                                    <line x1="15" y1="0" x2="450" y2={-currentVFov*2} stroke={currentModel.iconColor} strokeWidth="1" strokeDasharray="3,3" opacity="0.3"/>
+                                                    <line x1="15" y1="0" x2="450" y2={currentVFov*2} stroke={currentModel.iconColor} strokeWidth="1" strokeDasharray="3,3" opacity="0.3"/>
                                                     {/* 中心視線 */}
                                                     <line x1="15" y1="0" x2="500" y2="0" stroke="red" strokeWidth="1" strokeDasharray="5,2" opacity="0.5"/>
                                                 </g>
@@ -387,6 +447,31 @@
                         {/* 控制桿區塊 */}
                         <div className="space-y-5 overflow-y-auto pr-2 custom-scrollbar flex-1">
                             
+                            {/* 特殊功能：變焦滑桿 (僅變焦鏡頭顯示) */}
+                            {currentModel.zoomRange && (
+                                <div className="bg-orange-900/30 p-3 rounded-lg border border-orange-700/50">
+                                    <label className="flex justify-between text-sm mb-2">
+                                        <span className="text-orange-200 flex items-center gap-1">
+                                            <ZoomIn size={14} /> 
+                                            鏡頭變焦 (18-55mm)
+                                        </span>
+                                        <span className="font-mono text-sm font-bold text-orange-400">
+                                            {Math.round(18 + zoomLevel * (55 - 18))}mm
+                                        </span>
+                                    </label>
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-xs text-neutral-500">廣角(18mm)</span>
+                                        <input 
+                                            type="range" 
+                                            min="0" max="1" step="0.01"
+                                            value={zoomLevel} onChange={(e) => setZoomLevel(Number(e.target.value))}
+                                            className="w-full h-1.5 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                                        />
+                                        <span className="text-xs text-neutral-500">望遠(55mm)</span>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* 1. 距離 */}
                             <div>
                                 <label className="flex justify-between text-sm mb-1">
@@ -473,7 +558,9 @@
                         {/* OSD (On Screen Display) 頂部 */}
                         <div className="absolute top-0 left-0 right-0 flex justify-between items-start p-4 z-20 pointer-events-none">
                             <div className="bg-black/60 backdrop-blur-sm px-3 py-1 rounded text-sm font-mono text-white border-l-4 border-green-500 shadow-lg">
-                                {cameraModel} <span className="text-neutral-400">|</span> {currentModel.resolution}
+                                {cameraModel === 'TLC2020_18_55' ? 'TLC2020 + BCS18-55' : cameraModel} 
+                                <span className="text-neutral-400 mx-2">|</span> 
+                                {currentModel.resolution}
                             </div>
                         </div>
 
