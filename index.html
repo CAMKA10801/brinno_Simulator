@@ -5,721 +5,382 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>肯佳企業 - Brinno 縮時相機視角模擬器</title>
     
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Babel 用於解析 JSX -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
-    <!-- Import Map 設定套件來源 (React + Lucide Icons) -->
-    <script type="importmap">
-    {
-      "imports": {
-        "react": "https://esm.sh/react@18.2.0",
-        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-        "lucide-react": "https://esm.sh/lucide-react@0.292.0?external=react"
-      }
-    }
-    </script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
-        /* 隱藏捲軸但保持功能 */
-        .scrollbar-hide::-webkit-scrollbar {
-            display: none;
-        }
-        .scrollbar-hide {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-        /* 自定義捲軸樣式 */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #262626;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #525252;
-            border-radius: 3px;
-        }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #262626; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #525252; border-radius: 3px; }
     </style>
 </head>
 <body class="bg-neutral-900 text-white">
     <div id="root"></div>
 
-    <!-- React 應用程式主邏輯 -->
-    <script type="text/babel" data-type="module">
-        import React, { useState, useMemo, useEffect } from 'react';
-        import { createRoot } from 'react-dom/client';
-        import { Ruler, Info, Camera, Aperture, User, Building2, Settings, CheckCircle2, ArrowUpDown, Eye, ScanEye, ZoomIn } from 'lucide-react';
+    <script type="text/babel">
+        // 從全域變數取得 React 功能與圖示 [cite: 8]
+        const { useState, useMemo, useEffect } = React;
+        const { createRoot } = ReactDOM;
+        const { Ruler, Info, Camera, Aperture, User, Building2, Settings, CheckCircle2, ArrowUpDown, Eye, ScanEye, ZoomIn } = lucide;
 
         const App = () => {
-            // 狀態管理
-            const [scenario, setScenario] = useState('building'); // 'person' | 'building'
-            const [viewMode, setViewMode] = useState('side'); // 'top' | 'side'
-            const [cameraModel, setCameraModel] = useState('TLC2020'); 
+            // 狀態管理 [cite: 9]
+            const [scenario, setScenario] = useState('building'); [cite: 10]
+            const [viewMode, setViewMode] = useState('side'); [cite: 11]
+            const [cameraModel, setCameraModel] = useState('TLC2020'); [cite: 12]
+            const [distance, setDistance] = useState(5000); [cite: 13]
+            const [objHeight, setObjHeight] = useState(3000); [cite: 14]
+            const [cameraHeight, setCameraHeight] = useState(2000); [cite: 15]
+            const [tilt, setTilt] = useState(0); [cite: 16]
+            const [zoomLevel, setZoomLevel] = useState(0); [cite: 17]
             
-            // 參數狀態
-            const [distance, setDistance] = useState(5000); // 50m
-            const [objHeight, setObjHeight] = useState(3000); // 30m
-            const [cameraHeight, setCameraHeight] = useState(2000); // 20m
-            const [tilt, setTilt] = useState(0); // 俯仰角度
-            const [zoomLevel, setZoomLevel] = useState(0); // 變焦程度 0 (Wide) ~ 1 (Tele)
-            
-            // 各型號相機規格參數
+            // 各型號相機規格參數 [cite: 18]
             const models = {
                 'TLC300': {
                     name: 'TLC300',
                     label: 'TLC300 入門款',
-                    fov: 118, // 對角線
-                    hFov: 95, // 水平
-                    vFov: 60, // 垂直 (估算)
-                    resolution: '1080p FHD',
-                    sensor: 'HDR Sensor',
-                    color: 'bg-blue-600',
-                    iconColor: '#2563eb',
-                    desc: '適合長期記錄、輕便好攜帶。',
-                    screenSize: '1.44" IPS'
+                    fov: 118, hFov: 95, vFov: 60,
+                    resolution: '1080p FHD', sensor: 'HDR Sensor',
+                    color: 'bg-blue-600', iconColor: '#2563eb',
+                    desc: '適合長期記錄、輕便好攜帶。', screenSize: '1.44" IPS' [cite: 18, 19, 20]
                 },
                 'TLC2020': {
                     name: 'TLC2020',
                     label: 'TLC2020 標準版',
-                    fov: 118, 
-                    hFov: 95,
-                    vFov: 60,
-                    resolution: '1080p FHD',
-                    sensor: 'HDR & FHD Sensor',
-                    color: 'bg-yellow-500',
-                    iconColor: '#eab308',
-                    desc: '標準廣角鏡頭 (BCS039)，視野寬廣。',
-                    screenSize: '2.0" TFT'
+                    fov: 118, hFov: 95, vFov: 60,
+                    resolution: '1080p FHD', sensor: 'HDR & FHD Sensor',
+                    color: 'bg-yellow-500', iconColor: '#eab308',
+                    desc: '標準廣角鏡頭 (BCS039)，視野寬廣。', screenSize: '2.0" TFT' [cite: 21, 22]
                 },
                 'TLC2020_18_55': {
                     name: 'TLC2020 + BCS 18-55',
                     label: 'TLC2020 + BCS 18-55mm',
-                    fov: '113°~48°', // 變焦範圍
-                    zoomRange: { min: 113, max: 48 }, // 對角線範圍
-                    hFovRange: { min: 90, max: 38 }, // 水平範圍 (估算)
-                    vFovRange: { min: 58, max: 22 }, // 垂直範圍 (估算)
-                    resolution: '1080p FHD',
-                    sensor: 'F1.2 大光圈',
-                    color: 'bg-orange-500',
-                    iconColor: '#f97316',
-                    desc: '手動變焦鏡 (18-55mm)，可調整視角遠近，需搭配電池蓋轉接座。',
-                    screenSize: '2.0" TFT'
+                    fov: '113°~48°',
+                    zoomRange: { min: 113, max: 48 }, hFovRange: { min: 90, max: 38 }, vFovRange: { min: 58, max: 22 },
+                    resolution: '1080p FHD', sensor: 'F1.2 大光圈',
+                    color: 'bg-orange-500', iconColor: '#f97316',
+                    desc: '手動變焦鏡 (18-55mm)，可調整視角遠近，需搭配電池蓋轉接座。', screenSize: '2.0" TFT' [cite: 23, 24, 25]
                 },
                 'BCC5000': {
                     name: 'BCC5000',
                     label: 'BCC5000 4K 旗艦',
-                    fov: 118,
-                    hFov: 95,
-                    vFov: 60,
-                    resolution: '4K UHD',
-                    sensor: 'Sony STARVIS 2',
-                    color: 'bg-purple-600',
-                    iconColor: '#9333ea',
-                    desc: '4K 超高畫質，夜拍強悍，適合大型工程。',
-                    screenSize: 'App Control'
+                    fov: 118, hFov: 95, vFov: 60,
+                    resolution: '4K UHD', sensor: 'Sony STARVIS 2',
+                    color: 'bg-purple-600', iconColor: '#9333ea',
+                    desc: '4K 超高畫質，夜拍強悍，適合大型工程。', screenSize: 'App Control' [cite: 26, 27, 28]
                 }
             };
 
-            const currentModel = models[cameraModel];
+            const currentModel = models[cameraModel]; [cite: 29]
             
-            // 計算當前的 FOV (如果有變焦功能)
             const currentHFov = useMemo(() => {
                 if (currentModel.hFovRange) {
-                    // 線性插值計算當前變焦下的水平視角
-                    // zoomLevel 0 = Wide (Max Angle), 1 = Tele (Min Angle)
-                    return currentModel.hFovRange.min - (zoomLevel * (currentModel.hFovRange.min - currentModel.hFovRange.max));
+                    return currentModel.hFovRange.min - (zoomLevel * (currentModel.hFovRange.min - currentModel.hFovRange.max)); [cite: 30]
                 }
-                return currentModel.hFov;
+                return currentModel.hFov; [cite: 30]
             }, [currentModel, zoomLevel]);
 
             const currentVFov = useMemo(() => {
                 if (currentModel.vFovRange) {
-                    return currentModel.vFovRange.min - (zoomLevel * (currentModel.vFovRange.min - currentModel.vFovRange.max));
+                    return currentModel.vFovRange.min - (zoomLevel * (currentModel.vFovRange.min - currentModel.vFovRange.max)); [cite: 31]
                 }
-                return currentModel.vFov;
+                return currentModel.vFov; [cite: 31]
             }, [currentModel, zoomLevel]);
 
-            const sensorFormatRatio = 16 / 9;
+            useEffect(() => { setZoomLevel(0); }, [cameraModel]); [cite: 32]
 
-            // 切換相機時重置 Zoom
-            useEffect(() => {
-                setZoomLevel(0);
-            }, [cameraModel]);
-
-            // 場景配置設定
             const config = {
                 person: {
-                label: "人物/近距",
-                maxDist: 1000,       // 10米
-                minDist: 50,
-                maxHeight: 300,      // 3米
-                minHeight: 50,
-                maxCamHeight: 400,   // 相機最高 4米
-                distStep: 10,
-                heightStep: 5,
-                defaultDist: 300,
-                defaultHeight: 170,
-                defaultCamHeight: 150
+                    label: "人物/近距", maxDist: 1000, minDist: 50, maxHeight: 300, minHeight: 50,
+                    maxCamHeight: 400, distStep: 10, heightStep: 5, defaultDist: 300, defaultHeight: 170, defaultCamHeight: 150 [cite: 33, 34, 35]
                 },
                 building: {
-                label: "建築/遠景",
-                maxDist: 20000,      // 200米
-                minDist: 500,
-                maxHeight: 10000,    // 100米
-                minHeight: 500,
-                maxCamHeight: 10000, // 100米
-                distStep: 100,
-                heightStep: 100,
-                defaultDist: 5000,   // 50米
-                defaultHeight: 3000, // 30米
-                defaultCamHeight: 2000 // 20米
+                    label: "建築/遠景", maxDist: 20000, minDist: 500, maxHeight: 10000, minHeight: 500,
+                    maxCamHeight: 10000, distStep: 100, heightStep: 100, defaultDist: 5000, defaultHeight: 3000, defaultCamHeight: 2000 [cite: 36, 37]
                 }
             };
 
-            const currentConfig = config[scenario];
-            const maxDistance = currentConfig.maxDist;
-            const maxCamHeight = currentConfig.maxCamHeight;
+            const currentConfig = config[scenario]; [cite: 38]
+            const maxDistance = currentConfig.maxDist; [cite: 38]
+            const maxCamHeight = currentConfig.maxCamHeight; [cite: 39]
             
-            // 切換模式時重置數值
             const handleScenarioChange = (mode) => {
                 setScenario(mode);
-                setDistance(config[mode].defaultDist);
+                setDistance(config[mode].defaultDist); [cite: 40]
                 setObjHeight(config[mode].defaultHeight);
                 setCameraHeight(config[mode].defaultCamHeight);
                 setTilt(0);
             };
             
-            // --- 核心計算邏輯 (投影幾何) ---
-            
-            // 1. 計算視野寬度 (僅與距離有關，俯視圖用)
-            const visibleWidthAtDistance = useMemo(() => {
-                const angleRad = (currentHFov / 2) * (Math.PI / 180);
-                return 2 * (distance * Math.tan(angleRad));
-            }, [distance, currentHFov]);
-
-            // 2. 計算物體在畫面中的垂直位置與大小 (側視圖與透視用)
             const projection = useMemo(() => {
-                const relHeadY = objHeight - cameraHeight;
+                const relHeadY = objHeight - cameraHeight; [cite: 42]
                 const relFeetY = 0 - cameraHeight;
-                
-                // 計算角度 (度) = atan(高度差 / 距離)
-                const angleToHead = Math.atan(relHeadY / distance) * (180 / Math.PI);
+                const angleToHead = Math.atan(relHeadY / distance) * (180 / Math.PI); [cite: 43]
                 const angleToFeet = Math.atan(relFeetY / distance) * (180 / Math.PI);
-                
-                const screenTopAngle = tilt + (currentVFov / 2);
-                const totalAngleRange = currentVFov;
-                
-                // 將角度轉換為畫面百分比
-                const headPosPercent = ((screenTopAngle - angleToHead) / totalAngleRange) * 100;
+                const screenTopAngle = tilt + (currentVFov / 2); [cite: 43]
+                const totalAngleRange = currentVFov; [cite: 44]
+                const headPosPercent = ((screenTopAngle - angleToHead) / totalAngleRange) * 100; [cite: 44]
                 const feetPosPercent = ((screenTopAngle - angleToFeet) / totalAngleRange) * 100;
-                
-                // 計算畫面地平線位置
-                const horizonPercent = (screenTopAngle / totalAngleRange) * 100;
+                const horizonPercent = (screenTopAngle / totalAngleRange) * 100; [cite: 45]
 
                 return {
-                top: headPosPercent,
-                bottom: feetPosPercent,
-                height: feetPosPercent - headPosPercent,
-                horizon: horizonPercent
+                    top: headPosPercent, bottom: feetPosPercent,
+                    height: feetPosPercent - headPosPercent, horizon: horizonPercent [cite: 46]
                 };
             }, [distance, objHeight, cameraHeight, tilt, currentVFov]);
 
             const formatLength = (val) => {
-                if (Math.abs(val) >= 100) return `${(val / 100).toFixed(1)}m`;
-                return `${Math.round(val)}cm`;
+                if (Math.abs(val) >= 100) return `${(val / 100).toFixed(1)}m`; [cite: 47]
+                return `${Math.round(val)}cm`; [cite: 48]
             };
 
             const formatFloors = (cm) => {
-                if (cm < 300) return ''; 
-                const floors = (cm / 300).toFixed(1);
-                return <span className="text-xs text-neutral-500 ml-1 font-normal">(約 {floors} 層樓)</span>;
+                if (cm < 300) return ''; [cite: 48]
+                const floors = (cm / 300).toFixed(1); [cite: 49]
+                return <span className="text-xs text-neutral-500 ml-1 font-normal">(約 {floors} 層樓)</span>; [cite: 49]
             };
 
             return (
                 <div className="min-h-screen bg-neutral-900 text-white font-sans p-4 md:p-8 flex flex-col items-center">
-                
-                {/* Header */}
-                <header className="w-full max-w-6xl mb-6 border-b border-neutral-700 pb-6">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                        <div className="flex items-center gap-3">
-                        
-                        {/* Logo Area */}
-                        <div className="flex-shrink-0">
-                            <img
-                                src="https://brinno.com/cdn/shop/files/logo_-02_190x.png"
-                                alt="Brinno Logo"
-                                className="h-12 w-auto rounded-lg shadow-lg"
-                                />
-                            </div>
-
-                        <div>
-                            <h1 className="text-2xl font-bold tracking-wider flex flex-wrap items-center gap-2">
-                                <span className="text-white">肯佳企業</span>
-                                <span className="text-neutral-600 mx-1">|</span>
-                                <span className={`${currentModel.color.replace('bg-', 'text-')} transition-colors duration-300`}>{currentModel.name}</span>
-                            </h1>
-                            <div className="flex gap-2 text-xs text-neutral-400 mt-1">
-                                <span className="bg-neutral-800 px-1.5 py-0.5 rounded border border-neutral-700">
-                                    FOV {currentModel.hFovRange ? `${currentModel.fov}` : `${currentModel.fov}°`}
-                                </span>
-                                {currentModel.hFovRange && (
-                                     <span className="bg-neutral-800 px-1.5 py-0.5 rounded border border-neutral-700 text-yellow-500">
-                                        目前: {Math.round(currentHFov / 0.8)}°(對角)
-                                     </span>
-                                )}
-                            </div>
-                        </div>
-                        </div>
-
-                        {/* 型號選擇器 */}
-                        <div className="flex bg-neutral-800 p-1 rounded-lg border border-neutral-700 overflow-x-auto scrollbar-hide">
-                            {Object.keys(models).map((m) => (
-                                <button
-                                    key={m}
-                                    onClick={() => setCameraModel(m)}
-                                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap flex items-center gap-2 ${
-                                        cameraModel === m 
-                                        ? `${models[m].color} text-white shadow-md` 
-                                        : 'text-neutral-400 hover:text-white hover:bg-neutral-700'
-                                    }`}
-                                >
-                                    {m === 'TLC2020_18_55' ? 'BCS 18-55mm' : models[m].name}
-                                    {cameraModel === m && <CheckCircle2 size={14} />}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    {currentModel.desc && (
-                        <div className="mt-2 text-xs text-neutral-400 flex items-center gap-2">
-                            <Info size={14} />
-                            {currentModel.desc}
-                        </div>
-                    )}
-                </header>
-
-                <main className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-8">
-                    
-                    {/* 左側：佈局與參數 (佔 5 欄) */}
-                    <section className="lg:col-span-5 flex flex-col gap-4">
-                    <div className="bg-neutral-800 rounded-xl p-4 shadow-lg border border-neutral-700 flex flex-col h-full">
-                        
-                        {/* 視圖標題與切換 */}
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-lg font-semibold flex items-center gap-2">
-                            {viewMode === 'side' ? <ScanEye size={18} className="text-green-400"/> : <Ruler size={18} className={currentModel.color.replace('bg-', 'text-')} />} 
-                            {viewMode === 'side' ? '側面佈局 (Side View)' : '俯視佈局 (Top View)'}
-                            </h2>
-                            
-                            <div className="flex gap-2">
-                                {/* 場景切換 */}
-                                <div className="flex bg-neutral-900 rounded-lg p-1 border border-neutral-700 mr-2">
-                                    <button onClick={() => handleScenarioChange('person')} className={`p-1.5 rounded ${scenario === 'person' ? 'bg-neutral-700 text-white' : 'text-neutral-500'}`} title="人物/近距"><User size={16} /></button>
-                                    <button onClick={() => handleScenarioChange('building')} className={`p-1.5 rounded ${scenario === 'building' ? 'bg-neutral-700 text-white' : 'text-neutral-500'}`} title="建築/遠景"><Building2 size={16} /></button>
+                    <header className="w-full max-w-6xl mb-6 border-b border-neutral-700 pb-6">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                            <div className="flex items-center gap-3">
+                                <div className="flex-shrink-0">
+                                    <img src="https://brinno.com/cdn/shop/files/logo_-02_190x.png" alt="Brinno Logo" className="h-12 w-auto rounded-lg shadow-lg" /> [cite: 52, 53]
                                 </div>
-
-                                {/* 視角切換 */}
-                                <div className="flex bg-neutral-900 rounded-lg p-1 border border-neutral-700">
-                                    <button onClick={() => setViewMode('top')} className={`px-3 py-1 rounded text-xs font-bold ${viewMode === 'top' ? 'bg-neutral-700 text-white' : 'text-neutral-500'}`}>Top</button>
-                                    <button onClick={() => setViewMode('side')} className={`px-3 py-1 rounded text-xs font-bold ${viewMode === 'side' ? 'bg-neutral-700 text-white' : 'text-neutral-500'}`}>Side</button>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        {/* SVG 視圖區域 */}
-                        <div className="relative w-full h-64 bg-neutral-900 rounded-lg border border-neutral-700 overflow-hidden mb-4">
-                            <div className="absolute inset-0 opacity-20" style={{backgroundImage: 'radial-gradient(#555 1px, transparent 1px)', backgroundSize: '20px 20px'}}></div>
-
-                            <svg className="w-full h-full" viewBox="0 0 550 300" preserveAspectRatio="xMidYMid meet">
-                                <defs>
-                                    <linearGradient id="fovTopGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                        <stop offset="0%" stopColor={currentModel.iconColor} stopOpacity="0.3" />
-                                        <stop offset="100%" stopColor={currentModel.iconColor} stopOpacity="0" />
-                                    </linearGradient>
-                                    <linearGradient id="fovSideGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                        <stop offset="0%" stopColor={currentModel.iconColor} stopOpacity="0.3" />
-                                        <stop offset="100%" stopColor={currentModel.iconColor} stopOpacity="0" />
-                                    </linearGradient>
-                                </defs>
-                            
-                            {viewMode === 'top' ? (
-                                // --- 俯視圖 (Top View) ---
-                                <g>
-                                    {/* 相機 */}
-                                    <g transform="translate(30, 150)">
-                                        <rect x="-10" y="-15" width="20" height="30" rx="2" fill="#333" stroke={currentModel.iconColor} strokeWidth="2" />
-                                        <circle cx="10" cy="0" r="4" fill="#111" />
-                                    </g>
-                                    {/* FOV 錐狀 */}
-                                    {(() => {
-                                        const spread = currentHFov * 1.2;
-                                        return (
-                                            <g transform="translate(40, 150)">
-                                                <path d={`M 0 0 L 480 ${-spread} L 480 ${spread} Z`} fill="url(#fovTopGradient)" opacity="0.2" />
-                                                <line x1="0" y1="0" x2="480" y2={-spread} stroke={currentModel.iconColor} strokeWidth="1" strokeDasharray="4,4" opacity="0.4"/>
-                                                <line x1="0" y1="0" x2="480" y2={spread} stroke={currentModel.iconColor} strokeWidth="1" strokeDasharray="4,4" opacity="0.4"/>
-                                            </g>
-                                        )
-                                    })()}
-                                    {/* 物體 */}
-                                    <g transform={`translate(${40 + (distance / maxDistance) * 450}, 150)`}>
-                                        <line x1="0" y1="-130" x2="0" y2="130" stroke="#fff" strokeWidth="1" strokeDasharray="4,2" opacity="0.3" />
-                                        <circle r="6" fill="#3b82f6" stroke="white" strokeWidth="2" />
-                                        <text x="0" y="-15" textAnchor="middle" fill="#3b82f6" fontSize="12" fontWeight="bold">{scenario === 'building' ? '建築' : '主體'}</text>
-                                        <text x="0" y="25" textAnchor="middle" fill="#aaa" fontSize="10">{formatLength(distance)}</text>
-                                    </g>
-                                </g>
-                            ) : (
-                                // --- 側視圖 (Side View) ---
-                                <g>
-                                    {/* 地面線 */}
-                                    <line x1="0" y1="250" x2="550" y2="250" stroke="#666" strokeWidth="2" />
-                                    
-                                    {/* 相機 (垂直位置可變) */}
-                                    {/* Mapping: 0cm = y:250, maxCamHeight = y:50 */}
-                                    {(() => {
-                                        const camY = 250 - (cameraHeight / maxCamHeight) * 200;
-                                        return (
-                                            <g transform={`translate(50, ${camY})`}>
-                                                {/* 腳架/柱子 */}
-                                                <line x1="0" y1="0" x2="0" y2={250 - camY} stroke="#444" strokeWidth="2" />
-                                                {/* 相機本體 (可旋轉) */}
-                                                <g transform={`rotate(${-tilt})`}> 
-                                                    <rect x="-10" y="-10" width="20" height="20" fill="#333" stroke={currentModel.iconColor} strokeWidth="2" />
-                                                    {currentModel.zoomRange && (
-                                                        // 變焦鏡頭顯示較長
-                                                        <rect x="10" y="-6" width={15 + zoomLevel * 10} height="12" fill="#555" stroke="#888" strokeWidth="1" />
-                                                    )}
-                                                    <line x1="10" y1="0" x2="15" y2="0" stroke="#888" strokeWidth="2" />
-                                                    
-                                                    {/* FOV 錐狀 (垂直) */}
-                                                    <path d={`M 15 0 L 450 ${-currentVFov*2} L 450 ${currentVFov*2} Z`} fill="url(#fovSideGradient)" opacity="0.2" />
-                                                    <line x1="15" y1="0" x2="450" y2={-currentVFov*2} stroke={currentModel.iconColor} strokeWidth="1" strokeDasharray="3,3" opacity="0.3"/>
-                                                    <line x1="15" y1="0" x2="450" y2={currentVFov*2} stroke={currentModel.iconColor} strokeWidth="1" strokeDasharray="3,3" opacity="0.3"/>
-                                                    {/* 中心視線 */}
-                                                    <line x1="15" y1="0" x2="500" y2="0" stroke="red" strokeWidth="1" strokeDasharray="5,2" opacity="0.5"/>
-                                                </g>
-                                                <text x="-20" y="5" textAnchor="end" fill="#aaa" fontSize="10" alignmentBaseline="middle">{formatLength(cameraHeight)}</text>
-                                            </g>
-                                        )
-                                    })()}
-
-                                    {/* 物體 (水平位置與高度可變) */}
-                                    {(() => {
-                                        const objX = 50 + (distance / maxDistance) * 400;
-                                        // 物體高度比例 (相對於 maxCamHeight)
-                                        const objH_px = (objHeight / maxCamHeight) * 200;
-                                        return (
-                                            <g transform={`translate(${objX}, 250)`}>
-                                                {/* 距離標示線 */}
-                                                <line x1="0" y1="0" x2="0" y2="-240" stroke="#fff" strokeWidth="1" strokeDasharray="2,2" opacity="0.1" />
-                                                
-                                                {/* 物體圖形 */}
-                                                {scenario === 'building' ? (
-                                                    <rect x="0" y={-objH_px} width="20" height={objH_px} fill="#3b82f6" stroke="white" strokeWidth="1" />
-                                                ) : (
-                                                    <g>
-                                                        <line x1="0" y1="0" x2="0" y2={-objH_px} stroke="#3b82f6" strokeWidth="4" />
-                                                        <circle cx="0" cy={-objH_px} r="4" fill="#3b82f6" />
-                                                    </g>
-                                                )}
-                                                <text x="0" y={-objH_px - 10} textAnchor="middle" fill="#3b82f6" fontSize="10">{formatLength(objHeight)}</text>
-                                                <text x="0" y="15" textAnchor="middle" fill="#aaa" fontSize="10">{formatLength(distance)}</text>
-                                            </g>
-                                        )
-                                    })()}
-                                </g>
-                            )}
-                            </svg>
-                            
-                            {/* 視圖上的小提示 */}
-                            <div className="absolute bottom-2 right-2 text-[10px] text-neutral-500 bg-black/50 px-1 rounded">
-                                {viewMode === 'top' ? 'X軸: 距離 / Y軸: 寬度' : 'X軸: 距離 / Y軸: 高度'}
-                            </div>
-                        </div>
-
-                        {/* 控制桿區塊 */}
-                        <div className="space-y-5 overflow-y-auto pr-2 custom-scrollbar flex-1">
-                            
-                            {/* 特殊功能：變焦滑桿 (僅變焦鏡頭顯示) */}
-                            {currentModel.zoomRange && (
-                                <div className="bg-orange-900/30 p-3 rounded-lg border border-orange-700/50">
-                                    <label className="flex justify-between text-sm mb-2">
-                                        <span className="text-orange-200 flex items-center gap-1">
-                                            <ZoomIn size={14} /> 
-                                            鏡頭變焦 (18-55mm)
-                                        </span>
-                                        <span className="font-mono text-sm font-bold text-orange-400">
-                                            {Math.round(18 + zoomLevel * (55 - 18))}mm
-                                        </span>
-                                    </label>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xs text-neutral-500">廣角(18mm)</span>
-                                        <input 
-                                            type="range" 
-                                            min="0" max="1" step="0.01"
-                                            value={zoomLevel} onChange={(e) => setZoomLevel(Number(e.target.value))}
-                                            className="w-full h-1.5 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-orange-500"
-                                        />
-                                        <span className="text-xs text-neutral-500">望遠(55mm)</span>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* 1. 距離 */}
-                            <div>
-                                <label className="flex justify-between text-sm mb-1">
-                                    <span className="text-neutral-300 flex items-center gap-1"><ArrowUpDown size={12} className="rotate-90"/> 拍攝距離 (Distance)</span>
-                                    <span className="text-yellow-500 font-mono text-sm">{formatLength(distance)}</span>
-                                </label>
-                                <input 
-                                    type="range" 
-                                    min={currentConfig.minDist} max={currentConfig.maxDist} step={currentConfig.distStep}
-                                    value={distance} onChange={(e) => setDistance(Number(e.target.value))}
-                                    className="w-full h-1.5 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-yellow-500"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                {/* 2. 相機高度 */}
                                 <div>
-                                    <label className="flex justify-between text-sm mb-1">
-                                        <span className="text-neutral-300 flex items-center gap-1"><ArrowUpDown size={12}/> 相機高度</span>
-                                        <span className="text-green-400 font-mono text-sm flex items-center flex-wrap">
-                                            {formatLength(cameraHeight)}
-                                            {formatFloors(cameraHeight)}
+                                    <h1 className="text-2xl font-bold tracking-wider flex flex-wrap items-center gap-2">
+                                        <span className="text-white">肯佳企業</span>
+                                        <span className="text-neutral-600 mx-1">|</span>
+                                        <span className={`${currentModel.color.replace('bg-', 'text-')} transition-colors duration-300`}>{currentModel.name}</span> [cite: 54, 55]
+                                    </h1>
+                                    <div className="flex gap-2 text-xs text-neutral-400 mt-1">
+                                        <span className="bg-neutral-800 px-1.5 py-0.5 rounded border border-neutral-700">
+                                            FOV {currentModel.hFovRange ? `${currentModel.fov}` : `${currentModel.fov}°`} [cite: 56, 57]
                                         </span>
-                                    </label>
-                                    <input 
-                                        type="range" 
-                                        min="0" max={maxCamHeight} step={currentConfig.heightStep}
-                                        value={cameraHeight} onChange={(e) => setCameraHeight(Number(e.target.value))}
-                                        className="w-full h-1.5 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-green-500"
-                                    />
-                                </div>
-
-                                {/* 3. 物體高度 */}
-                                <div>
-                                    <label className="flex justify-between text-sm mb-1">
-                                        <span className="text-neutral-300 flex items-center gap-1"><ArrowUpDown size={12}/> 主體高度</span>
-                                        <span className="text-blue-400 font-mono text-sm flex items-center flex-wrap">
-                                            {formatLength(objHeight)}
-                                            {formatFloors(objHeight)}
-                                        </span>
-                                    </label>
-                                    <input 
-                                        type="range" 
-                                        min={currentConfig.minHeight} max={currentConfig.maxHeight} step={currentConfig.heightStep}
-                                        value={objHeight} onChange={(e) => setObjHeight(Number(e.target.value))}
-                                        className="w-full h-1.5 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                                    />
+                                        {currentModel.hFovRange && (
+                                            <span className="bg-neutral-800 px-1.5 py-0.5 rounded border border-neutral-700 text-yellow-500">
+                                                目前: {Math.round(currentHFov / 0.8)}°(對角) [cite: 58]
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-
-                            {/* 4. 俯仰角度 (Tilt) */}
-                            <div className="bg-neutral-900/50 p-3 rounded-lg border border-neutral-700/50">
-                                <label className="flex justify-between text-sm mb-2">
-                                    <span className="text-neutral-300 flex items-center gap-1">
-                                        <Eye size={14} /> 
-                                        俯仰角度 (Tilt)
-                                    </span>
-                                    <span className={`font-mono text-sm font-bold ${tilt === 0 ? 'text-white' : tilt > 0 ? 'text-sky-400' : 'text-orange-400'}`}>
-                                        {tilt > 0 ? `仰角 +${tilt}°` : tilt < 0 ? `俯角 ${tilt}°` : `水平 0°`}
-                                    </span>
-                                </label>
-                                <div className="flex items-center gap-3">
-                                    <span className="text-xs text-neutral-500">俯(-60°)</span>
-                                    <input 
-                                        type="range" 
-                                        min="-60" max="60" step="1"
-                                        value={tilt} onChange={(e) => setTilt(Number(e.target.value))}
-                                        className="w-full h-1.5 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-white"
-                                    />
-                                    <span className="text-xs text-neutral-500">仰(+60°)</span>
-                                </div>
-                                <div className="flex justify-center mt-1">
-                                        <button onClick={() => setTilt(0)} className="text-[10px] text-neutral-500 hover:text-white border border-neutral-700 px-2 rounded">重置水平 (Reset)</button>
-                                </div>
+                            <div className="flex bg-neutral-800 p-1 rounded-lg border border-neutral-700 overflow-x-auto scrollbar-hide">
+                                {Object.keys(models).map((m) => (
+                                    <button key={m} onClick={() => setCameraModel(m)}
+                                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap flex items-center gap-2 ${cameraModel === m ? `${models[m].color} text-white shadow-md` : 'text-neutral-400 hover:text-white hover:bg-neutral-700'}`}>
+                                        {m === 'TLC2020_18_55' ? 'BCS 18-55mm' : models[m].name} [cite: 61, 62, 64, 65, 66]
+                                        {cameraModel === m && <CheckCircle2 size={14} />}
+                                    </button>
+                                ))}
                             </div>
                         </div>
-                    </div>
-                    </section>
+                        {currentModel.desc && <div className="mt-2 text-xs text-neutral-400 flex items-center gap-2"><Info size={14} />{currentModel.desc}</div>} [cite: 67, 68]
+                    </header>
 
-                    {/* 右側：相機畫面模擬 (佔 7 欄) */}
-                    <section className="lg:col-span-7 flex flex-col">
-                    <div className="bg-neutral-800 rounded-xl p-1 shadow-lg border border-neutral-700 relative flex-1 min-h-[400px]">
-                        
-                        {/* OSD (On Screen Display) 頂部 */}
-                        <div className="absolute top-0 left-0 right-0 flex justify-between items-start p-4 z-20 pointer-events-none">
-                            <div className="bg-black/60 backdrop-blur-sm px-3 py-1 rounded text-sm font-mono text-white border-l-4 border-green-500 shadow-lg">
-                                {cameraModel === 'TLC2020_18_55' ? 'TLC2020 + BCS18-55' : cameraModel} 
-                                <span className="text-neutral-400 mx-2">|</span> 
-                                {currentModel.resolution}
-                            </div>
-                        </div>
-
-                        {/* 模擬螢幕 Viewport */}
-                        <div className="relative w-full h-full bg-black rounded-lg overflow-hidden group isolate">
-                            
-                            {/* 1. 動態背景 (模擬地平線移動) */}
-                            {/* 當 Tilt < 0 (俯角)，地平線向上移；當 Tilt > 0 (仰角)，地平線向下移 */}
-                            <div 
-                                className="absolute inset-0 w-full h-full transition-transform duration-100 ease-out will-change-transform"
-                                style={{
-                                        // 簡單模擬：移動背景位置
-                                        // horizon 位於 projection.horizon%
-                                        top: `${projection.horizon - 50}%`, 
-                                        height: '150%' // 加大背景以防露餡
-                                }}
-                            >
-                                    {/* 天空 */}
-                                    <div className="absolute top-0 w-full h-1/2 bg-gradient-to-b from-sky-900 via-sky-800 to-sky-700/50"></div>
-                                    
-                                    {/* 地面 (網格) */}
-                                    <div className="absolute top-[50%] w-full h-1/2 bg-neutral-800 origin-top" 
-                                        style={{
-                                            // 增加透視感
-                                            transform: 'perspective(500px) rotateX(10deg)'
-                                        }}
-                                    >
-                                    <div className="absolute inset-0 opacity-30" 
-                                        style={{
-                                            backgroundImage: 'linear-gradient(0deg, transparent 24%, rgba(255, 255, 255, .3) 25%, rgba(255, 255, 255, .3) 26%, transparent 27%, transparent 74%, rgba(255, 255, 255, .3) 75%, rgba(255, 255, 255, .3) 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, rgba(255, 255, 255, .3) 25%, rgba(255, 255, 255, .3) 26%, transparent 27%, transparent 74%, rgba(255, 255, 255, .3) 75%, rgba(255, 255, 255, .3) 76%, transparent 77%, transparent)',
-                                            backgroundSize: '40px 40px',
-                                            transform: 'scaleY(2)' // 拉伸網格模擬縱深
-                                        }}>
+                    <main className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-8">
+                        <section className="lg:col-span-5 flex flex-col gap-4">
+                            <div className="bg-neutral-800 rounded-xl p-4 shadow-lg border border-neutral-700 flex flex-col h-full">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h2 className="text-lg font-semibold flex items-center gap-2">
+                                        {viewMode === 'side' ? <ScanEye size={18} className="text-green-400"/> : <Ruler size={18} className={currentModel.color.replace('bg-', 'text-')} />} 
+                                        {viewMode === 'side' ? '側面佈局 (Side View)' : '俯視佈局 (Top View)'} [cite: 71, 72, 73]
+                                    </h2>
+                                    <div className="flex gap-2">
+                                        <div className="flex bg-neutral-900 rounded-lg p-1 border border-neutral-700 mr-2">
+                                            <button onClick={() => handleScenarioChange('person')} className={`p-1.5 rounded ${scenario === 'person' ? 'bg-neutral-700 text-white' : 'text-neutral-500'}`} title="人物/近距"><User size={16} /></button> [cite: 75, 76]
+                                            <button onClick={() => handleScenarioChange('building')} className={`p-1.5 rounded ${scenario === 'building' ? 'bg-neutral-700 text-white' : 'text-neutral-500'}`} title="建築/遠景"><Building2 size={16} /></button> [cite: 76, 77]
+                                        </div>
+                                        <div className="flex bg-neutral-900 rounded-lg p-1 border border-neutral-700">
+                                            <button onClick={() => setViewMode('top')} className={`px-3 py-1 rounded text-xs font-bold ${viewMode === 'top' ? 'bg-neutral-700 text-white' : 'text-neutral-500'}`}>Top</button> [cite: 78, 79]
+                                            <button onClick={() => setViewMode('side')} className={`px-3 py-1 rounded text-xs font-bold ${viewMode === 'side' ? 'bg-neutral-700 text-white' : 'text-neutral-500'}`}>Side</button> [cite: 79, 80]
+                                        </div>
                                     </div>
-                                    </div>
-                                    {/* 地平線線條 */}
-                                    <div className="absolute top-[50%] w-full h-0.5 bg-white/20 shadow-[0_0_10px_rgba(255,255,255,0.5)]"></div>
-                            </div>
-
-                            {/* 2. 物體層 (使用計算出的 top/bottom 定位) */}
-                            <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                                <div 
-                                    className="absolute left-1/2 -translate-x-1/2 transition-all duration-200 ease-out"
-                                    style={{
-                                        // 這裡直接使用計算出的 % 來定位物體
-                                        // top 對應 projection.top%
-                                        // height 對應 projection.height%
-                                        top: `${projection.top}%`,
-                                        height: `${projection.height}%`,
-                                        // 根據場景調整寬高比，保持物體不變形太嚴重
-                                        aspectRatio: scenario === 'building' ? '1/2' : '1/3', 
-                                    }}
-                                >
-                                    <svg viewBox="0 0 100 300" className="w-full h-full drop-shadow-2xl filter" preserveAspectRatio="none">
-                                        {scenario === 'building' ? (
+                                </div>
+                                <div className="relative w-full h-64 bg-neutral-900 rounded-lg border border-neutral-700 overflow-hidden mb-4">
+                                    <div className="absolute inset-0 opacity-20" style={{backgroundImage: 'radial-gradient(#555 1px, transparent 1px)', backgroundSize: '20px 20px'}}></div> [cite: 82]
+                                    <svg className="w-full h-full" viewBox="0 0 550 300" preserveAspectRatio="xMidYMid meet">
+                                        <defs>
+                                            <linearGradient id="fovTopGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                                <stop offset="0%" stopColor={currentModel.iconColor} stopOpacity="0.3" /> [cite: 83]
+                                                <stop offset="100%" stopColor={currentModel.iconColor} stopOpacity="0" /> [cite: 84]
+                                            </linearGradient>
+                                            <linearGradient id="fovSideGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                                <stop offset="0%" stopColor={currentModel.iconColor} stopOpacity="0.3" /> [cite: 85]
+                                                <stop offset="100%" stopColor={currentModel.iconColor} stopOpacity="0" /> [cite: 85]
+                                            </linearGradient>
+                                        </defs>
+                                        {viewMode === 'top' ? (
                                             <g>
-                                                {/* 建築物簡單繪製 */}
-                                                <rect x="10" y="0" width="80" height="300" fill="#94a3b8" stroke="#475569" strokeWidth="5" />
-                                                {/* 窗戶循環 */}
-                                                {[...Array(6)].map((_, i) => (
-                                                    <g key={i} transform={`translate(0, ${i * 50})`}>
-                                                        <rect x="25" y="10" width="20" height="30" fill="#475569" />
-                                                        <rect x="55" y="10" width="20" height="30" fill="#475569" />
-                                                    </g>
-                                                ))}
+                                                <g transform="translate(30, 150)">
+                                                    <rect x="-10" y="-15" width="20" height="30" rx="2" fill="#333" stroke={currentModel.iconColor} strokeWidth="2" /> [cite: 88]
+                                                    <circle cx="10" cy="0" r="4" fill="#111" /> [cite: 89]
+                                                </g>
+                                                <g transform="translate(40, 150)">
+                                                    <path d={`M 0 0 L 480 ${-(currentHFov * 1.2)} L 480 ${(currentHFov * 1.2)} Z`} fill="url(#fovTopGradient)" opacity="0.2" /> [cite: 90, 92]
+                                                    <line x1="0" y1="0" x2="480" y2={-(currentHFov * 1.2)} stroke={currentModel.iconColor} strokeWidth="1" strokeDasharray="4,4" opacity="0.4"/> [cite: 92, 93]
+                                                    <line x1="0" y1="0" x2="480" y2={(currentHFov * 1.2)} stroke={currentModel.iconColor} strokeWidth="1" strokeDasharray="4,4" opacity="0.4"/> [cite: 93]
+                                                </g>
+                                                <g transform={`translate(${40 + (distance / maxDistance) * 450}, 150)`}>
+                                                    <line x1="0" y1="-130" x2="0" y2="130" stroke="#fff" strokeWidth="1" strokeDasharray="4,2" opacity="0.3" /> [cite: 95, 96]
+                                                    <circle r="6" fill="#3b82f6" stroke="white" strokeWidth="2" /> [cite: 96]
+                                                    <text x="0" y="-15" textAnchor="middle" fill="#3b82f6" fontSize="12" fontWeight="bold">{scenario === 'building' ? '建築' : '主體'}</text> [cite: 96, 97]
+                                                    <text x="0" y="25" textAnchor="middle" fill="#aaa" fontSize="10">{formatLength(distance)}</text> [cite: 97]
+                                                </g>
                                             </g>
                                         ) : (
                                             <g>
-                                                {/* 人物 */}
-                                                <circle cx="50" cy="30" r="25" fill="#fbbf24" />
-                                                <line x1="50" y1="55" x2="50" y2="200" stroke="#fbbf24" strokeWidth="15" strokeLinecap="round" />
-                                                <line x1="20" y1="90" x2="80" y2="90" stroke="#fbbf24" strokeWidth="15" strokeLinecap="round" />
-                                                <line x1="50" y1="200" x2="20" y2="290" stroke="#fbbf24" strokeWidth="15" strokeLinecap="round" />
-                                                <line x1="50" y1="200" x2="80" y2="290" stroke="#fbbf24" strokeWidth="15" strokeLinecap="round" />
+                                                <line x1="0" y1="250" x2="550" y2="250" stroke="#666" strokeWidth="2" /> [cite: 99]
+                                                {(() => {
+                                                    const camY = 250 - (cameraHeight / maxCamHeight) * 200; [cite: 101, 102]
+                                                    return (
+                                                        <g transform={`translate(50, ${camY})`}>
+                                                            <line x1="0" y1="0" x2="0" y2={250 - camY} stroke="#444" strokeWidth="2" /> [cite: 103]
+                                                            <g transform={`rotate(${-tilt})`}>
+                                                                <rect x="-10" y="-10" width="20" height="20" fill="#333" stroke={currentModel.iconColor} strokeWidth="2" /> [cite: 104, 105]
+                                                                {currentModel.zoomRange && <rect x="10" y="-6" width={15 + zoomLevel * 10} height="12" fill="#555" stroke="#888" strokeWidth="1" />} [cite: 106, 107]
+                                                                <path d={`M 15 0 L 450 ${-currentVFov*2} L 450 ${currentVFov*2} Z`} fill="url(#fovSideGradient)" opacity="0.2" /> [cite: 109, 110]
+                                                                <line x1="15" y1="0" x2="450" y2={-currentVFov*2} stroke={currentModel.iconColor} strokeWidth="1" strokeDasharray="3,3" opacity="0.3"/> [cite: 110, 111]
+                                                                <line x1="15" y1="0" x2="450" y2={currentVFov*2} stroke={currentModel.iconColor} strokeWidth="1" strokeDasharray="3,3" opacity="0.3"/> [cite: 111]
+                                                            </g>
+                                                            <text x="-20" y="5" textAnchor="end" fill="#aaa" fontSize="10" alignmentBaseline="middle">{formatLength(cameraHeight)}</text> [cite: 113]
+                                                        </g>
+                                                    )
+                                                })()}
+                                                {(() => {
+                                                    const objX = 50 + (distance / maxDistance) * 400; [cite: 115, 116]
+                                                    const objH_px = (objHeight / maxCamHeight) * 200; [cite: 116]
+                                                    return (
+                                                        <g transform={`translate(${objX}, 250)`}>
+                                                            <line x1="0" y1="0" x2="0" y2="-240" stroke="#fff" strokeWidth="1" strokeDasharray="2,2" opacity="0.1" /> [cite: 117, 118]
+                                                            {scenario === 'building' ? <rect x="0" y={-objH_px} width="20" height={objH_px} fill="#3b82f6" stroke="white" strokeWidth="1" /> : (
+                                                                <g><line x1="0" y1="0" x2="0" y2={-objH_px} stroke="#3b82f6" strokeWidth="4" /><circle cx="0" cy={-objH_px} r="4" fill="#3b82f6" /></g> [cite: 120, 122]
+                                                            )}
+                                                            <text x="0" y={-objH_px - 10} textAnchor="middle" fill="#3b82f6" fontSize="10">{formatLength(objHeight)}</text> [cite: 124]
+                                                            <text x="0" y="15" textAnchor="middle" fill="#aaa" fontSize="10">{formatLength(distance)}</text> [cite: 124]
+                                                        </g>
+                                                    )
+                                                })()}
                                             </g>
                                         )}
                                     </svg>
-
-                                    {/* 高度標籤 (跟隨物體) */}
-                                    <div className="absolute -right-20 top-0 text-xs text-white bg-black/50 px-1 rounded backdrop-blur-md border border-white/20 whitespace-nowrap">
-                                        {formatLength(objHeight)} {Number(objHeight) > 300 && `(約${(Number(objHeight)/300).toFixed(0)}F)`}
-                                    </div>
                                 </div>
-                            </div>
 
-                            {/* 3. OSD 底部資訊 */}
-                            <div className="absolute inset-0 p-4 flex flex-col justify-between pointer-events-none">
-                                <div className="flex justify-end pt-8">
-                                    {/* Tilt 指示器 (仿水平儀) */}
-                                    <div className="flex flex-col items-center gap-1 bg-black/30 p-1 rounded backdrop-blur-sm">
-                                            <div className="h-20 w-1.5 bg-neutral-600 rounded-full relative overflow-hidden">
-                                                <div 
-                                                className={`absolute w-full rounded-full transition-all duration-200 ${Math.abs(tilt) < 2 ? 'bg-green-500 h-3' : 'bg-yellow-500 h-2'}`}
-                                                style={{
-                                                    top: `${50 - (tilt / 60) * 40}%`, // 簡單映射
-                                                    transform: 'translateY(-50%)'
-                                                }}
-                                                ></div>
-                                                {/* 中心點 */}
-                                                <div className="absolute top-1/2 w-full h-px bg-white/50"></div>
+                                <div className="space-y-5 overflow-y-auto pr-2 custom-scrollbar flex-1">
+                                    {currentModel.zoomRange && (
+                                        <div className="bg-orange-900/30 p-3 rounded-lg border border-orange-700/50">
+                                            <label className="flex justify-between text-sm mb-2">
+                                                <span className="text-orange-200 flex items-center gap-1"><ZoomIn size={14} /> 鏡頭變焦 (18-55mm)</span> [cite: 131, 132, 133]
+                                                <span className="font-mono text-sm font-bold text-orange-400">{Math.round(18 + zoomLevel * (55 - 18))}mm</span> [cite: 134]
+                                            </label>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-xs text-neutral-500">廣角(18mm)</span> [cite: 136]
+                                                <input type="range" min="0" max="1" step="0.01" value={zoomLevel} onChange={(e) => setZoomLevel(Number(e.target.value))} className="w-full h-1.5 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-orange-500" /> [cite: 137, 138]
+                                                <span className="text-xs text-neutral-500">望遠(55mm)</span> [cite: 139]
                                             </div>
-                                            <span className="text-[10px] font-mono text-white">{tilt}°</span>
+                                        </div>
+                                    )}
+                                    <div>
+                                        <label className="flex justify-between text-sm mb-1">
+                                            <span className="text-neutral-300 flex items-center gap-1"><ArrowUpDown size={12} className="rotate-90"/> 拍攝距離</span>
+                                            <span className="text-yellow-500 font-mono text-sm">{formatLength(distance)}</span> [cite: 141]
+                                        </label>
+                                        <input type="range" min={currentConfig.minDist} max={currentConfig.maxDist} step={currentConfig.distStep} value={distance} onChange={(e) => setDistance(Number(e.target.value))} className="w-full h-1.5 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-yellow-500" /> [cite: 142, 143, 144]
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="flex justify-between text-sm mb-1">
+                                                <span className="text-neutral-300 flex items-center gap-1"><ArrowUpDown size={12}/> 相機高度</span>
+                                                <span className="text-green-400 font-mono text-sm flex items-center flex-wrap">{formatLength(cameraHeight)}</span> [cite: 146, 147]
+                                            </label>
+                                            <input type="range" min="0" max={maxCamHeight} step={currentConfig.heightStep} value={cameraHeight} onChange={(e) => setCameraHeight(Number(e.target.value))} className="w-full h-1.5 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-green-500" /> [cite: 149, 150]
+                                        </div>
+                                        <div>
+                                            <label className="flex justify-between text-sm mb-1">
+                                                <span className="text-neutral-300 flex items-center gap-1"><ArrowUpDown size={12}/> 主體高度</span>
+                                                <span className="text-blue-400 font-mono text-sm flex items-center flex-wrap">{formatLength(objHeight)}</span> [cite: 152, 153]
+                                            </label>
+                                            <input type="range" min={currentConfig.minHeight} max={currentConfig.maxHeight} step={currentConfig.heightStep} value={objHeight} onChange={(e) => setObjHeight(Number(e.target.value))} className="w-full h-1.5 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-blue-500" /> [cite: 155, 156, 157]
+                                        </div>
+                                    </div>
+                                    <div className="bg-neutral-900/50 p-3 rounded-lg border border-neutral-700/50">
+                                        <label className="flex justify-between text-sm mb-2">
+                                            <span className="text-neutral-300 flex items-center gap-1"><Eye size={14} /> 俯仰角度 (Tilt)</span> [cite: 159, 160]
+                                            <span className={`font-mono text-sm font-bold ${tilt === 0 ? 'text-white' : tilt > 0 ? 'text-sky-400' : 'text-orange-400'}`}>{tilt > 0 ? `仰角 +${tilt}°` : tilt < 0 ? `俯角 ${tilt}°` : `水平 0°`}</span> [cite: 161, 162, 163]
+                                        </label>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-xs text-neutral-500">俯(-60°)</span> [cite: 164]
+                                            <input type="range" min="-60" max="60" step="1" value={tilt} onChange={(e) => setTilt(Number(e.target.value))} className="w-full h-1.5 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-white" /> [cite: 165, 166]
+                                            <span className="text-xs text-neutral-500">仰(+60°)</span> [cite: 167]
+                                        </div>
                                     </div>
                                 </div>
-                                
-                                <div className="flex justify-between items-end">
-                                    <div className="text-white font-mono text-xs">
-                                        ISO AUTO<br/>
-                                        SHUTTER AUTO
-                                    </div>
-                                    <div className="text-white font-mono text-xs text-right">
-                                        READY
-                                        <br/>
-                                        BATTERY: 85%
+                            </div>
+                        </section>
+
+                        <section className="lg:col-span-7 flex flex-col">
+                            <div className="bg-neutral-800 rounded-xl p-1 shadow-lg border border-neutral-700 relative flex-1 min-h-[400px]">
+                                <div className="absolute top-0 left-0 right-0 flex justify-between items-start p-4 z-20 pointer-events-none">
+                                    <div className="bg-black/60 backdrop-blur-sm px-3 py-1 rounded text-sm font-mono text-white border-l-4 border-green-500 shadow-lg">
+                                        {cameraModel === 'TLC2020_18_55' ? 'TLC2020 + BCS18-55' : cameraModel} <span className="text-neutral-400 mx-2">|</span> {currentModel.resolution} [cite: 171, 172, 173]
                                     </div>
                                 </div>
+                                <div className="relative w-full h-full bg-black rounded-lg overflow-hidden group isolate">
+                                    <div className="absolute inset-0 w-full h-full transition-transform duration-100 ease-out will-change-transform" style={{ top: `${projection.horizon - 50}%`, height: '150%' }}> [cite: 176, 178]
+                                        <div className="absolute top-0 w-full h-1/2 bg-gradient-to-b from-sky-900 via-sky-800 to-sky-700/50"></div> [cite: 179]
+                                        <div className="absolute top-[50%] w-full h-1/2 bg-neutral-800 origin-top" style={{ transform: 'perspective(500px) rotateX(10deg)' }}> [cite: 181, 182]
+                                            <div className="absolute inset-0 opacity-30" style={{ backgroundImage: 'linear-gradient(0deg, transparent 24%, rgba(255, 255, 255, .3) 25%, transparent 27%), linear-gradient(90deg, transparent 24%, rgba(255, 255, 255, .3) 25%, transparent 27%)', backgroundSize: '40px 40px', transform: 'scaleY(2)' }}></div> [cite: 184, 185]
+                                        </div>
+                                        <div className="absolute top-[50%] w-full h-0.5 bg-white/20 shadow-[0_0_10px_rgba(255,255,255,0.5)]"></div> [cite: 187]
+                                    </div>
+                                    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                                        <div className="absolute left-1/2 -translate-x-1/2 transition-all duration-200 ease-out" style={{ top: `${projection.top}%`, height: `${projection.height}%`, aspectRatio: scenario === 'building' ? [cite_start]'1/2' : '1/3' }}> [cite: 188, 189, 191, 192, 193]
+                                            <svg viewBox="0 0 100 300" className="w-full h-full drop-shadow-2xl filter" preserveAspectRatio="none">
+                                                {scenario === 'building' ? (
+                                                    <g><rect x="10" y="0" width="80" height="300" fill="#94a3b8" stroke="#475569" strokeWidth="5" />{[...Array(6)].map((_, i) => (<g key={i} transform={`translate(0, ${i * 50})`}><rect x="25" y="10" width="20" height="30" fill="#475569" /><rect x="55" y="10" width="20" height="30" fill="#475569" /></g>))}</g> [cite: 195, 196, 197, 198, 199]
+                                                ) : (
+                                                    <g><circle cx="50" cy="30" r="25" fill="#fbbf24" /><line x1="50" y1="55" x2="50" y2="200" stroke="#fbbf24" strokeWidth="15" strokeLinecap="round" /><line x1="20" y1="90" x2="80" y2="90" stroke="#fbbf24" strokeWidth="15" strokeLinecap="round" /><line x1="50" y1="200" x2="20" y2="290" stroke="#fbbf24" strokeWidth="15" strokeLinecap="round" /><line x1="50" y1="200" x2="80" y2="290" stroke="#fbbf24" strokeWidth="15" strokeLinecap="round" /></g> [cite: 201, 202, 203, 204]
+                                                )}
+                                            </svg>
+                                            <div className="absolute -right-20 top-0 text-xs text-white bg-black/50 px-1 rounded backdrop-blur-md border border-white/20 whitespace-nowrap">{formatLength(objHeight)}</div> [cite: 206]
+                                        </div>
+                                    </div>
+                                    <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 opacity-30 pointer-events-none border border-white/10">
+                                        {[...Array(9)].map((_, i) => <div key={i} className="border border-white/20"></div>)} [cite: 222, 223]
+                                    </div>
+                                </div>
+                                {(projection.top < 0 || projection.bottom > 100) && (
+                                    <div className="mt-3 bg-red-900/60 text-red-100 text-xs px-3 py-2 rounded flex items-center gap-2 border border-red-700/50 animate-pulse"><Info size={14} /> 警告：主體部分已超出畫面！請調整「角度」或「距離」。</div> [cite: 226, 227]
+                                )}
                             </div>
+                        </section>
+                    </main>
 
-                            {/* 網格線 */}
-                            <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 opacity-30 pointer-events-none border border-white/10">
-                                {[...Array(9)].map((_, i) => <div key={i} className="border border-white/20"></div>)}
-                            </div>
-                            
-                            {/* 中心點十字 */}
-                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none opacity-50">
-                                <div className="absolute top-1/2 w-full h-px bg-white"></div>
-                                <div className="absolute left-1/2 h-full w-px bg-white"></div>
-                            </div>
-
+                    <footer className="w-full max-w-6xl mt-8 border-t border-neutral-700 pt-4 text-neutral-500 text-sm flex flex-col md:flex-row justify-between items-start gap-4">
+                        <div className="max-w-2xl">
+                            <h3 className="text-neutral-300 font-bold mb-1 flex items-center gap-2"><Info size={14}/> 模擬器使用指南</h3>
+                            <ul className="list-disc list-inside space-y-1 text-xs">
+                                <li><strong>樓層估算</strong>：模擬器以標準樓層高度 (3公尺) 換算，僅供參考。</li> [cite: 230]
+                                <li><strong>側視圖 (Side View)</strong>：推薦模式。可看見相機高度與俯仰角的物理關係。</li> [cite: 230]
+                                <li><strong>俯仰角 (Tilt)</strong>：正值為仰拍 (由下往上)，負值為俯拍 (由高樓往下)。</li> [cite: 230]
+                            </ul>
                         </div>
-                        
-                        {/* 警告訊息 */}
-                        {(projection.top < 0 || projection.bottom > 100) && (
-                        <div className="mt-3 bg-red-900/60 text-red-100 text-xs px-3 py-2 rounded flex items-center gap-2 border border-red-700/50 animate-pulse">
-                            <Info size={14} /> 警告：主體部分已超出畫面！請調整「角度」或「距離」。
-                        </div>
-                        )}
-                    </div>
-                    </section>
-
-                </main>
-                
-                <footer className="w-full max-w-6xl mt-8 border-t border-neutral-700 pt-4 text-neutral-500 text-sm flex flex-col md:flex-row justify-between items-start gap-4">
-                    <div className="max-w-2xl">
-                        <h3 className="text-neutral-300 font-bold mb-1 flex items-center gap-2"><Info size={14}/> 模擬器使用指南</h3>
-                        <ul className="list-disc list-inside space-y-1 text-xs">
-                            <li><strong>樓層估算</strong>：模擬器以標準樓層高度 (3公尺) 換算，僅供參考。</li>
-                            <li><strong>側視圖 (Side View)</strong>：推薦模式。可看見相機高度與俯仰角的物理關係。</li>
-                            <li><strong>俯仰角 (Tilt)</strong>：正值為仰拍 (由下往上)，負值為俯拍 (由高樓往下)。</li>
-                        </ul>
-                    </div>
-                    <div className="text-xs text-right">
-                        <p>Designed for Brinno TLC Series</p>
-                        <p>Simulation V2.1 (Floor Estimation)</p>
-                    </div>
-                </footer>
-
+                    </footer>
                 </div>
             );
         };
 
-        const root = createRoot(document.getElementById('root'));
-        root.render(<App />);
+        const root = createRoot(document.getElementById('root')); [cite: 233]
+        root.render(<App />); [cite: 233]
     </script>
 </body>
 </html>
