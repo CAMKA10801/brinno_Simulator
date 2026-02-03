@@ -4,12 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>肯佳企業 - Brinno 縮時相機視角模擬器</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
     <style>
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
@@ -22,18 +23,14 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        // 關鍵：從全域變數獲取，不再使用 import
         const { useState, useMemo, useEffect } = React;
         const { createRoot } = ReactDOM;
-        // Lucide 在瀏覽器全域叫 lucide
         const { 
             Ruler, Info, Camera, Aperture, User, Building2, 
             Settings, CheckCircle2, ArrowUpDown, Eye, ScanEye, ZoomIn 
         } = lucide;
 
         const App = () => {
-            // --- 這裡放入你原本檔案中 App 組件內的所有邏輯 ---
-            // (為了簡潔，我保留你原始上傳的完整邏輯)
             const [scenario, setScenario] = useState('building');
             const [viewMode, setViewMode] = useState('side');
             const [cameraModel, setCameraModel] = useState('TLC2020');
@@ -42,16 +39,53 @@
             const [cameraHeight, setCameraHeight] = useState(2000);
             const [tilt, setTilt] = useState(0);
             const [zoomLevel, setZoomLevel] = useState(0);
-
+            
             const models = {
-                'TLC300': { name: 'TLC300', label: 'TLC300 入門款', fov: 118, hFov: 95, vFov: 60, resolution: '1080p FHD', sensor: 'HDR Sensor', color: 'bg-blue-600', iconColor: '#2563eb', desc: '適合長期記錄、輕便好攜帶。', screenSize: '1.44" IPS' },
-                'TLC2020': { name: 'TLC2020', label: 'TLC2020 標準版', fov: 118, hFov: 95, vFov: 60, resolution: '1080p FHD', sensor: 'HDR & FHD Sensor', color: 'bg-yellow-500', iconColor: '#eab308', desc: '標準廣角鏡頭 (BCS039)，視野寬廣。', screenSize: '2.0" TFT' },
-                'TLC2020_18_55': { name: 'TLC2020 + BCS 18-55', label: 'TLC2020 + BCS 18-55mm', fov: '113°~48°', zoomRange: { min: 113, max: 48 }, hFovRange: { min: 90, max: 38 }, vFovRange: { min: 58, max: 22 }, resolution: '1080p FHD', sensor: 'F1.2 大光圈', color: 'bg-orange-500', iconColor: '#f97316', desc: '手動變焦鏡 (18-55mm)，可調整視角遠近。', screenSize: '2.0" TFT' },
-                'BCC5000': { name: 'BCC5000', label: 'BCC5000 4K 旗艦', fov: 118, hFov: 95, vFov: 60, resolution: '4K UHD', sensor: 'Sony STARVIS 2', color: 'bg-purple-600', iconColor: '#9333ea', desc: '4K 超高畫質，夜拍強悍。', screenSize: 'App Control' }
+                'TLC300': {
+                    name: 'TLC300',
+                    label: 'TLC300 入門款',
+                    fov: 118, hFov: 95, vFov: 60,
+                    resolution: '1080p FHD', sensor: 'HDR Sensor',
+                    color: 'bg-blue-600', iconColor: '#2563eb',
+                    desc: '適合長期記錄、輕便好攜帶。', screenSize: '1.44" IPS'
+                },
+                'TLC2020': {
+                    name: 'TLC2020',
+                    label: 'TLC2020 標準版',
+                    fov: 118, hFov: 95, vFov: 60,
+                    resolution: '1080p FHD', sensor: 'HDR & FHD Sensor',
+                    color: 'bg-yellow-500', iconColor: '#eab308',
+                    desc: '標準廣角鏡頭 (BCS039)，視野寬廣。', screenSize: '2.0" TFT'
+                },
+                'TLC2020_18_55': {
+                    name: 'TLC2020 + BCS 18-55',
+                    label: 'TLC2020 + BCS 18-55mm',
+                    fov: '113°~48°',
+                    zoomRange: { min: 113, max: 48 }, hFovRange: { min: 90, max: 38 }, vFovRange: { min: 58, max: 22 },
+                    resolution: '1080p FHD', sensor: 'F1.2 大光圈',
+                    color: 'bg-orange-500', iconColor: '#f97316',
+                    desc: '手動變焦鏡 (18-55mm)，可調整視角遠近。', screenSize: '2.0" TFT'
+                },
+                'BCC5000': {
+                    name: 'BCC5000',
+                    label: 'BCC5000 4K 旗艦',
+                    fov: 118, hFov: 95, vFov: 60,
+                    resolution: '4K UHD', sensor: 'Sony STARVIS 2',
+                    color: 'bg-purple-600', iconColor: '#9333ea',
+                    desc: '4K 超高畫質，夜拍強悍，適合大型工程。', screenSize: 'App Control'
+                }
             };
 
             const currentModel = models[cameraModel];
+            const currentHFov = useMemo(() => currentModel.hFovRange ? currentModel.hFovRange.min - (zoomLevel * (currentModel.hFovRange.min - currentModel.hFovRange.max)) : currentModel.hFov, [currentModel, zoomLevel]);
             const currentVFov = useMemo(() => currentModel.vFovRange ? currentModel.vFovRange.min - (zoomLevel * (currentModel.vFovRange.min - currentModel.vFovRange.max)) : currentModel.vFov, [currentModel, zoomLevel]);
+
+            const config = {
+                person: { label: "人物/近距", maxDist: 1000, minDist: 50, maxHeight: 300, minHeight: 50, maxCamHeight: 400, distStep: 10, heightStep: 5, defaultDist: 300, defaultHeight: 170, defaultCamHeight: 150 },
+                building: { label: "建築/遠景", maxDist: 20000, minDist: 500, maxHeight: 10000, minHeight: 500, maxCamHeight: 10000, distStep: 100, heightStep: 100, defaultDist: 5000, defaultHeight: 3000, defaultCamHeight: 2000 }
+            };
+
+            useEffect(() => { setZoomLevel(0); }, [cameraModel]);
 
             const projection = useMemo(() => {
                 const relHeadY = objHeight - cameraHeight;
@@ -62,40 +96,113 @@
                 return {
                     top: ((screenTopAngle - angleToHead) / currentVFov) * 100,
                     bottom: ((screenTopAngle - angleToFeet) / currentVFov) * 100,
+                    height: (((angleToHead - angleToFeet) / currentVFov) * 100),
                     horizon: (screenTopAngle / currentVFov) * 100
                 };
             }, [distance, objHeight, cameraHeight, tilt, currentVFov]);
 
+            const formatLength = (val) => Math.abs(val) >= 100 ? `${(val / 100).toFixed(1)}m` : `${Math.round(val)}cm`;
+
             return (
-                <div className="min-h-screen flex flex-col items-center justify-center p-8">
-                    <h1 className="text-3xl font-bold mb-4">Brinno 視角模擬器</h1>
-                    <div className="bg-neutral-800 p-6 rounded-xl shadow-2xl w-full max-w-4xl border border-neutral-700">
-                        <div className="flex gap-4 mb-6 overflow-x-auto pb-2">
-                            {Object.keys(models).map(m => (
-                                <button key={m} onClick={() => setCameraModel(m)} className={`px-4 py-2 rounded-lg transition ${cameraModel === m ? models[m].color : 'bg-neutral-700 opacity-50'}`}>
-                                    {models[m].name}
-                                </button>
-                            ))}
-                        </div>
-                        <div className="bg-black aspect-video rounded-lg relative overflow-hidden border border-neutral-600">
-                           <div className="absolute left-1/2 -translate-x-1/2 bg-blue-500/50" 
-                                style={{ top: `${projection.top}%`, height: `${projection.bottom - projection.top}%`, width: '20%' }}>
-                           </div>
-                           <div className="absolute w-full h-px bg-white/30" style={{ top: `${projection.horizon}%` }}></div>
-                           <div className="absolute top-4 left-4 text-xs font-mono bg-black/50 p-1">FOV: {currentVFov.toFixed(1)}°</div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                            <div className="space-y-4">
-                                <div><label className="block text-sm">距離: {distance}mm</label>
-                                <input type="range" min="500" max="10000" value={distance} onChange={e => setDistance(parseInt(e.target.value))} className="w-full" /></div>
-                                <div><label className="block text-sm">俯仰角: {tilt}°</label>
-                                <input type="range" min="-60" max="60" value={tilt} onChange={e => setTilt(parseInt(e.target.value))} className="w-full" /></div>
+                <div className="min-h-screen bg-neutral-900 text-white font-sans p-4 md:p-8 flex flex-col items-center">
+                    <header className="w-full max-w-6xl mb-6 border-b border-neutral-700 pb-6">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                            <div className="flex items-center gap-3">
+                                <img src="https://brinno.com/cdn/shop/files/logo_-02_190x.png" className="h-10 opacity-80" alt="Brinno" />
+                                <div>
+                                    <h1 className="text-2xl font-bold tracking-wider">肯佳企業 <span className="text-neutral-600 mx-1">|</span> <span className={currentModel.color.replace('bg-', 'text-')}>{currentModel.name}</span></h1>
+                                </div>
                             </div>
-                            <div className="text-sm text-neutral-400">
-                                <p>提示：如果畫面全藍，代表相機正對著主體；如果全黑，代表主體不在視野內。</p>
+                            <div className="flex bg-neutral-800 p-1 rounded-lg border border-neutral-700 overflow-x-auto scrollbar-hide">
+                                {Object.keys(models).map((m) => (
+                                    <button key={m} onClick={() => setCameraModel(m)}
+                                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${cameraModel === m ? `${models[m].color} text-white shadow-md` : 'text-neutral-400 hover:text-white hover:bg-neutral-700'}`}>
+                                        {m === 'TLC2020_18_55' ? '18-55mm' : models[m].name}
+                                    </button>
+                                ))}
                             </div>
                         </div>
-                    </div>
+                    </header>
+
+                    <main className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-8">
+                        <section className="lg:col-span-5 flex flex-col gap-4">
+                            <div className="bg-neutral-800 rounded-xl p-4 shadow-lg border border-neutral-700 flex flex-col">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h2 className="text-lg font-semibold flex items-center gap-2"><Settings size={18}/> 控制面板</h2>
+                                    <div className="flex bg-neutral-900 rounded-lg p-1">
+                                        <button onClick={() => setScenario('person')} className={`p-1.5 rounded ${scenario === 'person' ? 'bg-neutral-700' : 'text-neutral-500'}`}><User size={16}/></button>
+                                        <button onClick={() => setScenario('building')} className={`p-1.5 rounded ${scenario === 'building' ? 'bg-neutral-700' : 'text-neutral-500'}`}><Building2 size={16}/></button>
+                                    </div>
+                                </div>
+                                <div className="space-y-6 overflow-y-auto custom-scrollbar pr-2">
+                                    {currentModel.zoomRange && (
+                                        <div className="bg-orange-900/20 p-3 rounded-lg border border-orange-700/30">
+                                            <label className="flex justify-between text-sm mb-2"><span className="text-orange-400">變焦焦距</span><span>{Math.round(18 + zoomLevel * (55 - 18))}mm</span></label>
+                                            <input type="range" min="0" max="1" step="0.01" value={zoomLevel} onChange={(e) => setZoomLevel(Number(e.target.value))} className="w-full accent-orange-500" />
+                                        </div>
+                                    )}
+                                    <div>
+                                        <label className="flex justify-between text-sm mb-1"><span>拍攝距離</span><span className="text-yellow-500 font-mono">{formatLength(distance)}</span></label>
+                                        <input type="range" min={config[scenario].minDist} max={config[scenario].maxDist} step={config[scenario].distStep} value={distance} onChange={(e) => setDistance(Number(e.target.value))} className="w-full accent-yellow-500" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="flex justify-between text-sm mb-1"><span>相機高度</span><span className="text-green-500 font-mono">{formatLength(cameraHeight)}</span></label>
+                                            <input type="range" min="0" max={config[scenario].maxCamHeight} step={config[scenario].heightStep} value={cameraHeight} onChange={(e) => setCameraHeight(Number(e.target.value))} className="w-full accent-green-500" />
+                                        </div>
+                                        <div>
+                                            <label className="flex justify-between text-sm mb-1"><span>主體高度</span><span className="text-blue-500 font-mono">{formatLength(objHeight)}</span></label>
+                                            <input type="range" min={config[scenario].minHeight} max={config[scenario].maxHeight} step={config[scenario].heightStep} value={objHeight} onChange={(e) => setObjHeight(Number(e.target.value))} className="w-full accent-blue-500" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="flex justify-between text-sm mb-1"><span>俯仰角度 (Tilt)</span><span className="font-mono">{tilt}°</span></label>
+                                        <input type="range" min="-60" max="60" value={tilt} onChange={(e) => setTilt(Number(e.target.value))} className="w-full accent-white" />
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className="bg-neutral-800 rounded-xl p-4 border border-neutral-700">
+                                <h3 className="text-sm font-bold text-neutral-400 mb-2">機型規格資訊</h3>
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                    <div className="bg-neutral-900 p-2 rounded">解析度: {currentModel.resolution}</div>
+                                    <div className="bg-neutral-900 p-2 rounded">螢幕: {currentModel.screenSize}</div>
+                                    <div className="bg-neutral-900 p-2 rounded col-span-2">{currentModel.desc}</div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section className="lg:col-span-7 flex flex-col gap-4">
+                            <div className="bg-neutral-800 rounded-xl p-1 shadow-lg border border-neutral-700 relative aspect-video flex-1 overflow-hidden">
+                                <div className="absolute inset-0 bg-black">
+                                    <div className="absolute inset-0 transition-transform duration-300" style={{ top: `${projection.horizon - 50}%`, height: '150%' }}>
+                                        <div className="absolute top-0 w-full h-1/2 bg-sky-900/40"></div>
+                                        <div className="absolute top-1/2 w-full h-1/2 bg-neutral-800"></div>
+                                        <div className="absolute top-1/2 w-full h-px bg-white/20 shadow-[0_0_10px_white]"></div>
+                                    </div>
+                                    <div className="absolute left-1/2 -translate-x-1/2 transition-all duration-300" 
+                                         style={{ top: `${projection.top}%`, height: `${projection.height}%`, width: scenario === 'building' ? '15%' : '8%', opacity: 0.9 }}>
+                                        <svg viewBox="0 0 100 100" className="w-full h-full" preserveAspectRatio="none">
+                                            <rect width="100" height="100" fill={scenario === 'building' ? '#3b82f6' : '#fbbf24'} fillOpacity="0.8" rx="2" />
+                                        </svg>
+                                    </div>
+                                    <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none border border-white/5">
+                                        {[...Array(9)].map((_, i) => <div key={i} className="border border-white/10"></div>)}
+                                    </div>
+                                </div>
+                                <div className="absolute top-4 left-4 bg-black/60 px-3 py-1 rounded text-xs font-mono border border-white/20">LIVE | {currentModel.resolution}</div>
+                                {(projection.top < 0 || (projection.top + projection.height) > 100) && (
+                                    <div className="absolute bottom-4 left-4 right-4 bg-red-600/80 text-white text-xs px-3 py-2 rounded flex items-center gap-2 animate-pulse">
+                                        <Info size={14} /> 警告：主體已超出視野範圍！
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+                    </main>
+
+                    <footer className="w-full max-w-6xl mt-8 border-t border-neutral-700 pt-4 text-neutral-500 text-sm">
+                        <p>© 肯佳企業 - Brinno 專業縮時工具服務</p>
+                    </footer>
                 </div>
             );
         };
